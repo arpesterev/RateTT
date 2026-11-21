@@ -33,3 +33,7 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+# Local runtime credentials
+/docker-compose/services.local.env
+/docker-compose/connector-secrets.txt
