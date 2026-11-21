@@ -1,39 +1,52 @@
 # RateTT
 
-A Java 17 / Spring Boot prototype for evaluating a rating decision through a Camunda Zeebe workflow. It combines REST, BPMN/DMN definitions, PostgreSQL persistence, Kafka and Elasticsearch.
+A Java 17 / Spring Boot prototype for running a rating decision through a Camunda Zeebe BPMN/DMN workflow. It integrates REST, PostgreSQL, Kafka and Elasticsearch.
 
-## Request flow
+## How the request is processed
 
-1. `POST /rate` accepts a request containing `inn` and `capital`.
+1. `POST /rate` accepts `inn` and `capital`.
 2. The API stores the request in PostgreSQL.
-3. A Zeebe process runs the configured BPMN/DMN decision logic.
-4. The result is saved and sent through Kafka for downstream indexing.
+3. Zeebe executes the configured BPMN process and DMN decision.
+4. The result is stored and sent to Kafka for downstream indexing.
 
-The entry points are [`RateRestAPI.java`](src/main/java/best/solution/ever/rest/RateRestAPI.java) and [`Application.java`](src/main/java/best/solution/ever/Application.java). The checked-in process definitions are in `src/main/resources/`.
+Key sources: [REST controller](src/main/java/best/solution/ever/rest/RateRestAPI.java), [application entry point](src/main/java/best/solution/ever/Application.java), and BPMN/DMN definitions in [resources](src/main/resources/).
 
-## Local infrastructure
+## Local development
 
-The repository includes a multi-service Docker Compose setup under `docker-compose/` for development. From that directory, the correct Compose argument order is:
+Prerequisites: Java 17, Maven, Docker Compose and a POSIX-compatible shell for these commands.
+
+Copy the safe templates, then edit the local database password. **Do not commit the resulting local files.**
 
 ```sh
-docker compose -f services.docker-compose.yaml --env-file services.local.env up -d
+cp docker-compose/services.local.env.example docker-compose/services.local.env
+cp docker-compose/connector-secrets.example.txt docker-compose/connector-secrets.txt
 ```
 
-Review and configure environment variables and dependent services before starting the stack. The compose file is a development setup, not a production deployment recipe.
-
-From the repository root, with a Java 17 JDK and Maven installed:
+Start the development infrastructure:
 
 ```sh
-mvn package
+cd docker-compose
+docker compose -f services.docker-compose.yaml --env-file services.local.env up -d
+cd ..
+```
+
+Export the same local environment to the Java process before starting the API:
+
+```sh
+set -a
+. ./docker-compose/services.local.env
+set +a
 mvn spring-boot:run
 ```
 
-These commands are taken from the checked-in configuration. The complete distributed stack has not been started or validated as part of this documentation update.
+`application.properties` reads the database password from `POSTGRES_PASSWORD`, rather than storing a password in the repository. The variables in `services.local.env` are for local development only.
 
-## Security note
+The setup has not been exercised end-to-end as part of this documentation update. The provided Docker Compose file is not a production deployment recipe.
 
-The repository currently tracks local configuration files. **Do not use real credentials or production secrets in tracked files.** Use local untracked configuration and rotate any credentials that have previously been committed. Removing secrets from the latest revision does not remove them from Git history.
+## Security
 
-## Scope
+Older commits in this public repository contained local credentials/configuration values. **Deleting files from the current branch does not erase them from Git history.** If any exposed value was ever used for a real service, rotate it and assess whether history cleanup is necessary. Do not commit credentials into `application.properties` or `docker-compose/`.
 
-This is an example integration, not a validated decision engine. The output should not be treated as a production credit or eligibility assessment.
+## Limitations
+
+This is an example integration, not a verified production rating engine. Its output must not be used to make real financial or eligibility decisions without independent validation.
